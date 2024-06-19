@@ -35,12 +35,12 @@ class LauncherGazeboView(ILauncher):
                 self.display, self.internal_port, self.external_port, DRI_PATH
             )
             # Write display config and start gzclient
-            gzclient_cmd = f"export DISPLAY={self.display}; {gzclient_config_cmds} export VGL_DISPLAY={DRI_PATH}; vglrun gz sim -g -v4"
+            gzclient_cmd = f"export DISPLAY={self.display}; {gzclient_config_cmds} export VGL_DISPLAY={DRI_PATH}; vglrun gz sim -g -v4 --gui-config /opt/jderobot/Config/gui.config"
         else:
             # Starts xserver, x11vnc and novnc
             self.gz_vnc.start_vnc(self.display, self.internal_port, self.external_port)
             # Write display config and start gzclient
-            gzclient_cmd = f"export DISPLAY={self.display}; {gzclient_config_cmds} gz sim -g -v4"
+            gzclient_cmd = f"export DISPLAY={self.display}; {gzclient_config_cmds} gz sim -g -v4 --gui-config /opt/jderobot/Config/gui.config"
 
         gzclient_thread = DockerThread(gzclient_cmd)
         gzclient_thread.start()
