@@ -41,7 +41,7 @@ ws = websocket.create_connection("ws://localhost:7163")
 
 ws.send(ConnectCmd().json())
 ws.send(LaunchWorldCmd().json())
-# ws.send(LaunchPrepareViz().json())
+ws.send(LaunchPrepareViz().json())
 
 
 while True:

@@ -26,8 +26,8 @@ class LauncherGazeboView(ILauncher):
         DRI_PATH = self.get_dri_path()
         ACCELERATION_ENABLED = self.check_device(DRI_PATH)
 
-        # Configure browser screen width and height for gzclient
-        gzclient_config_cmds = f"echo [geometry] > ~/.gazebo/gui.ini; echo x=0 >> ~/.gazebo/gui.ini; echo y=0 >> ~/.gazebo/gui.ini; echo width={self.width} >> ~/.gazebo/gui.ini; echo height={self.height} >> ~/.gazebo/gui.ini;"
+        # Configure browser screen width and height for gz GUI
+        gzclient_config_cmds = f"sed -i 's/<width>.*<\\/width>/<width>{self.width}<\\/width>/; s/<height>.*<\\/height>/<height>{self.height}<\\/height>/' /opt/jderobot/Config/gui.config;"
 
         if ACCELERATION_ENABLED:
             # Starts xserver, x11vnc and novnc
@@ -35,12 +35,12 @@ class LauncherGazeboView(ILauncher):
                 self.display, self.internal_port, self.external_port, DRI_PATH
             )
             # Write display config and start gzclient
-            gzclient_cmd = f"export DISPLAY={self.display}; {gzclient_config_cmds} export VGL_DISPLAY={DRI_PATH}; vglrun gzclient --verbose"
+            gzclient_cmd = f"export DISPLAY={self.display}; {gzclient_config_cmds} export VGL_DISPLAY={DRI_PATH}; vglrun gz sim -g -v4"
         else:
             # Starts xserver, x11vnc and novnc
             self.gz_vnc.start_vnc(self.display, self.internal_port, self.external_port)
             # Write display config and start gzclient
-            gzclient_cmd = f"export DISPLAY={self.display}; {gzclient_config_cmds} gzclient --verbose"
+            gzclient_cmd = f"export DISPLAY={self.display}; {gzclient_config_cmds} gz sim -g -v4"
 
         gzclient_thread = DockerThread(gzclient_cmd)
         gzclient_thread.start()
