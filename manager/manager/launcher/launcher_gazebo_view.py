@@ -27,7 +27,7 @@ class LauncherGazeboView(ILauncher):
         ACCELERATION_ENABLED = self.check_device(DRI_PATH)
 
         # Configure browser screen width and height for gz GUI
-        gzclient_config_cmds = f"sed -i 's/<width>.*<\\/width>/<width>{self.width}<\\/width>/; s/<height>.*<\\/height>/<height>{self.height}<\\/height>/' /opt/jderobot/Config/gui.config;"
+        gzclient_config_cmds = f"sed -i 's/<width>.*<\/width>/<width>{self.width}<\/width>/; s/<height>.*<\/height>/<height>{self.height}<\/height>/' opt/jderobot/Config/gui.config;"
 
         if ACCELERATION_ENABLED:
             # Starts xserver, x11vnc and novnc
