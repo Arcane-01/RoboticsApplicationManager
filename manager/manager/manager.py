@@ -403,6 +403,8 @@ ideal_cycle = 20
         if "noetic" in str(self.ros_version):
             rosservice.call_service("/gazebo/reset_world", [])
         elif self.visualization_type == "gzsim_rae":
+            print("\ngz service for resetting invoked")
+            self.call_gzservice("$(gz service -l | grep '^/world/\w*/control$')","gz.msgs.WorldControl","gz.msgs.Boolean","pause: true")
             self.call_gzservice("$(gz service -l | grep '^/world/\w*/control$')","gz.msgs.WorldControl","gz.msgs.Boolean","reset: {all: true}")
         else:
             self.call_service("/reset_world", "std_srvs/srv/Empty")
