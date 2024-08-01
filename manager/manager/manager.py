@@ -387,7 +387,7 @@ ideal_cycle = 20
         if "noetic" in str(self.ros_version):
             rosservice.call_service("/gazebo/pause_physics", [])
         elif self.visualization_type == "gzsim_rae":
-            self.call_gzservice("$(gz service -l | grep '^/world/\w*/control$')","gz.msgs.WorldControl","gz.msgs.Boolean","pause: true")
+            self.call_gzservice("$(gz service -l | grep '^/world/\w*/control$')","gz.msgs.WorldControl","gz.msgs.Boolean","3000","pause: true")
         else:
             self.call_service("/pause_physics", "std_srvs/srv/Empty")
 
@@ -395,7 +395,7 @@ ideal_cycle = 20
         if "noetic" in str(self.ros_version):
             rosservice.call_service("/gazebo/unpause_physics", [])
         elif self.visualization_type == "gzsim_rae":
-            self.call_gzservice("$(gz service -l | grep '^/world/\w*/control$')","gz.msgs.WorldControl","gz.msgs.Boolean","pause: false")
+            self.call_gzservice("$(gz service -l | grep '^/world/\w*/control$')","gz.msgs.WorldControl","gz.msgs.Boolean","3000","pause: false")
         else:
             self.call_service("/unpause_physics", "std_srvs/srv/Empty")
 
@@ -404,11 +404,11 @@ ideal_cycle = 20
             rosservice.call_service("/gazebo/reset_world", [])
         elif self.visualization_type == "gzsim_rae":
             print("\ngz service for resetting invoked")
-            self.call_gzservice("$(gz service -l | grep '^/world/\w*/control$')","gz.msgs.WorldControl","gz.msgs.Boolean","pause: true")
-            self.call_gzservice("$(gz service -l | grep '^/world/\w*/control$')","gz.msgs.WorldControl","gz.msgs.Boolean","reset: {all: true}")
+            self.call_gzservice("$(gz service -l | grep '^/world/\w*/control$')","gz.msgs.WorldControl","gz.msgs.Boolean","7000","reset: {all: true}")
         else:
             self.call_service("/reset_world", "std_srvs/srv/Empty")
-            
+        print("\nReset Sim function ends")
+
     def call_service(self, service, service_type):
         command = f"ros2 service call {service} {service_type}"
         subprocess.call(
@@ -420,8 +420,8 @@ ideal_cycle = 20
             universal_newlines=True,
         )
     
-    def call_gzservice(self, service, reqtype, reptype, req):
-        command = f"gz service -s {service} --reqtype {reqtype} --reptype {reptype} --timeout 3000 --req '{req}'"
+    def call_gzservice(self, service, reqtype, reptype, timeout, req):
+        command = f"gz service -s {service} --reqtype {reqtype} --reptype {reptype} --timeout {timeout} --req '{req}'"
         subprocess.call(
             f"{command}",
             shell=True,
