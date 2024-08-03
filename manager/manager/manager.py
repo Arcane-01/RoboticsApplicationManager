@@ -405,7 +405,7 @@ ideal_cycle = 20
         elif self.visualization_type == "gzsim_rae":
             print("\ngz service for resetting invoked")
             # self.call_gzservice("$(gz service -l | grep '^/world/\w*/control$')","gz.msgs.WorldControl","gz.msgs.Boolean","3000","reset: {all: true}")
-            self.call_gzservice("$(gz service -l | grep '^/world/\w*/set_pose$')","gz.msgs.Pose","gz.msgs.Boolean","3000","name: \"drone0\", position: {x: 0, y: 0, z: 1.45}")
+            self.call_gzservice("$(gz service -l | grep '^/world/\w*/set_pose$')","gz.msgs.Pose","gz.msgs.Boolean","3000","name: \"drone0\", position: {x: 0, y: 0, z: 1.4}")
         else:
             self.call_service("/reset_world", "std_srvs/srv/Empty")
         print("\nReset Sim function ends")
