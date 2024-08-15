@@ -141,6 +141,7 @@ class Manager:
         self.consumer = ManagerConsumer(host, port, self.queue)
         self.world_launcher = None
         self.visualization_launcher = None
+        self.visualization_type = None
         self.application_process = None
         self.running = True
         self.gui_server = None
@@ -262,17 +263,16 @@ class Manager:
 
         LogManager.logger.info("Visualization transition started")
 
-        visualization_type = event.kwargs.get("data", {})
-
+        self.visualization_type = event.kwargs.get("data", {})
         self.visualization_launcher = LauncherVisualization(
-            visualization=visualization_type
+            visualization=self.visualization_type
         )
         self.visualization_launcher.run()
 
-        if visualization_type in ["gazebo_rae", "gzsim_rae"]:
+        if self.visualization_type in ["gazebo_rae", "gzsim_rae"]:
             self.gui_server = Server(2303, self.update)
             self.gui_server.start()
-        elif visualization_type == "bt_studio":
+        elif self.visualization_type == "bt_studio":
             self.gui_server = FileWatchdog('/tmp/tree_state', self.update_bt_studio) # TODO: change if type bt
             self.gui_server.start()
 
@@ -566,6 +566,17 @@ ideal_cycle = 20
 
     def call_service(self, service, service_type):
         command = f"ros2 service call {service} {service_type}"
+        subprocess.call(
+            f"{command}",
+            shell=True,
+            stdout=sys.stdout,
+            stderr=subprocess.STDOUT,
+            bufsize=1024,
+            universal_newlines=True,
+        )
+
+    def call_gzservice(self, service, reqtype, reptype, timeout, req):
+        command = f"gz service -s {service} --reqtype {reqtype} --reptype {reptype} --timeout {timeout} --req '{req}'"
         subprocess.call(
             f"{command}",
             shell=True,
