@@ -8,6 +8,8 @@ import re
 import psutil
 import shutil
 import time
+import rclpy
+import rclpy
 
 if "noetic" in str(subprocess.check_output(["bash", "-c", "echo $ROS_DISTRO"])):
     import rosservice
@@ -400,6 +402,9 @@ ideal_cycle = 20
             self.call_service("/unpause_physics", "std_srvs/srv/Empty")
 
     def reset_sim(self):
+        if not rclpy.ok(): 
+            rclpy.init()
+    
         if "noetic" in str(self.ros_version):
             rosservice.call_service("/gazebo/reset_world", [])
         elif self.visualization_type == "gzsim_rae":
