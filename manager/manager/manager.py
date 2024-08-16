@@ -31,7 +31,7 @@ from src.manager.manager.application.robotics_python_application_interface impor
 )
 from src.manager.libs.process_utils import stop_process_and_children
 from src.manager.manager.lint.linter import Lint
-from jderobot_drones.drone_wrapper import DroneWrapper
+from jderobot_drones.drone_reset import DroneReset
 
 class Manager:
     states = [
@@ -405,7 +405,7 @@ ideal_cycle = 20
         elif self.visualization_type == "gzsim_rae":
             # self.call_gzservice("$(gz service -l | grep '^/world/\w*/control$')","gz.msgs.WorldControl","gz.msgs.Boolean","3000","reset: {all: true}")
             # self.call_gzservice("$(gz service -l | grep '^/world/\w*/set_pose$')","gz.msgs.Pose","gz.msgs.Boolean","3000","name: \"drone0\", position: {x: 0, y: 0, z: 1.375}")
-            drone_r = DroneWrapper()
+            drone_reset = DroneReset()
             self.call_service("/quadrotor_reset_pose", "std_srvs/srv/Trigger")
         else:
             self.call_service("/reset_world", "std_srvs/srv/Empty")
