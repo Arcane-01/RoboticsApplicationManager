@@ -28,6 +28,13 @@ class LauncherDronesGzsim(ILauncher):
         as2_launch_thread = DockerThread(as2_launch_cmd)
         as2_launch_thread.start()
         self.threads.append(as2_launch_thread)
+        
+        # Running the node for resetting the drone based exercise
+        reset_node_run_cmd = f"ros2 run jderobot_drones drone_reset"
+
+        reset_node_thread = DockerThread(reset_node_run_cmd)
+        reset_node_thread.start()
+        self.threads.append(reset_node_thread)
 
     def is_running(self):
         return True
