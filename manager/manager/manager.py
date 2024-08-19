@@ -411,6 +411,7 @@ ideal_cycle = 20
             # self.call_gzservice("$(gz service -l | grep '^/world/\w*/control$')","gz.msgs.WorldControl","gz.msgs.Boolean","3000","reset: {all: true}")
             self.call_gzservice("$(gz service -l | grep '^/world/\w*/set_pose$')","gz.msgs.Pose","gz.msgs.Boolean","3000","name: \"drone0\", position: {x: 0, y: 0, z: 1.375}")
             drone_reset = DroneReset()
+            rclpy.spin(drone_reset)
             self.call_service("/quadrotor_reset_pose", "std_srvs/srv/Trigger")
         else:
             self.call_service("/reset_world", "std_srvs/srv/Empty")
