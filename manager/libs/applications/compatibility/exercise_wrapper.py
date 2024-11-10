@@ -7,11 +7,11 @@ import time
 import importlib
 from threading import Thread
 
-from src.manager.libs.applications.compatibility.client import Client
-from src.manager.libs.process_utils import stop_process_and_children
-from src.manager.ram_logging.log_manager import LogManager
-from src.manager.manager.application.robotics_python_application_interface import IRoboticsPythonApplication
-from src.manager.manager.lint.linter import Lint
+from manager.libs.applications.compatibility.client import Client
+from manager.libs.process_utils import stop_process_and_children
+from manager.ram_logging.log_manager import LogManager
+from manager.manager.application.robotics_python_application_interface import IRoboticsPythonApplication
+from manager.manager.lint.linter import Lint
 
 
 class CompatibilityExerciseWrapper():

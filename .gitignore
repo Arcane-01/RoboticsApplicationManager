@@ -1,2 +1,6 @@
 # Byte-compiled file
 __pycache__/
+/.idea
+
+# IDEs
+.vscode

@@ -1,7 +1,7 @@
-from src.manager.manager.launcher.launcher_interface import ILauncher
-from src.manager.manager.docker_thread.docker_thread import DockerThread
-from src.manager.manager.vnc.vnc_server import Vnc_server
-from src.manager.libs.process_utils import check_gpu_acceleration
+from manager.manager.launcher.launcher_interface import ILauncher
+from manager.manager.docker_thread.docker_thread import DockerThread
+from manager.manager.vnc.vnc_server import Vnc_server
+from manager.libs.process_utils import check_gpu_acceleration
 import os
 import stat
 from typing import List, Any
@@ -16,7 +16,7 @@ class LauncherConsole(ILauncher):
     console_vnc: Any = Vnc_server()
 
     def run(self, callback):
-        DRI_PATH = os.path.join("/dev/dri", os.environ.get("DRI_NAME", "card0"))
+        DRI_PATH = self.get_dri_path()
         ACCELERATION_ENABLED = False
 
         if ACCELERATION_ENABLED:
@@ -38,20 +38,16 @@ class LauncherConsole(ILauncher):
 
         self.running = True
 
-    def check_device(self, device_path):
-        try:
-            return stat.S_ISCHR(os.lstat(device_path)[stat.ST_MODE])
-        except:
-            return False
-
     def is_running(self):
         return self.running
 
     def terminate(self):
         self.console_vnc.terminate()
         for thread in self.threads:
-            thread.terminate()
-            thread.join()
+            if thread.is_alive():
+                thread.terminate()
+                thread.join()
+            self.threads.remove(thread)
         self.running = False
 
     def died(self):

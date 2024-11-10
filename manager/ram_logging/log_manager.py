@@ -1,7 +1,7 @@
 import logging
 import os
 
-from src.manager.libs.singleton import singleton
+from manager.libs.singleton import singleton
 
 
 # Clase para un Formatter personalizado que añade colores

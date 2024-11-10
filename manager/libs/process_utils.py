@@ -11,7 +11,7 @@ import base64
 
 import psutil
 
-from src.manager.ram_logging.log_manager import LogManager
+from manager.ram_logging.log_manager import LogManager
 
 
 def get_class(kls):
@@ -134,19 +134,21 @@ def check_gpu_acceleration():
         if not os.path.exists("/dev/dri"):
             LogManager.logger.error(
                 "/dev/dri does not exist. No direct GPU access.")
-            return False
+            return "OFF"
 
-        # Obtiene la salida de glxinfo
-        result = subprocess.check_output(
-            "glxinfo | grep direct", shell=True).decode('utf-8')
-        print(result)
+        # # Obtiene la salida de glxinfo
+        # result = subprocess.check_output(
+        #     "glxinfo | grep direct", shell=True).decode('utf-8')
+        # print(result)
 
-        # Verifica si la aceleración directa está habilitada
-        return "direct rendering: Yes" in result
+        # # Verifica si la aceleración directa está habilitada
+        # return "direct rendering: Yes" in result        
 
+        vendor_name = os.environ['DRI_VENDOR']
+        return vendor_name.upper()
     except Exception as e:
         print(f"Error: {e}")
-        return False
+        return "OFF"
 
 
 def get_ros_version():

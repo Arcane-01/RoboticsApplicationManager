@@ -4,7 +4,7 @@ import subprocess
 import traceback
 from typing import Any, List
 
-from src.manager.launcher.launcher_interface import ILauncher, LauncherException
+from manager.launcher.launcher_interface import ILauncher, LauncherException
 
 
 class LauncherRos(ILauncher):

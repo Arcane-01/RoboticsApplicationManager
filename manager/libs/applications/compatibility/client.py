@@ -1,7 +1,7 @@
 import threading
 import websocket
 
-from src.manager.ram_logging.log_manager import LogManager
+from manager.ram_logging.log_manager import LogManager
 
 
 class Client(threading.Thread):

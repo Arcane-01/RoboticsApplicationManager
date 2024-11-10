@@ -1,10 +1,10 @@
 import time
 import socket
-from src.manager.manager.docker_thread.docker_thread import DockerThread
+from manager.manager.docker_thread.docker_thread import DockerThread
 import subprocess
 from typing import List, Any
 import os
-from src.manager.libs.process_utils import wait_for_xserver
+from manager.libs.process_utils import wait_for_xserver
 
 
 class Vnc_server:
@@ -20,7 +20,7 @@ class Vnc_server:
         wait_for_xserver(display)
 
         # Start VNC server without password, forever running in background
-        x11vnc_cmd = f"x11vnc -quiet -display {display} -nopw -forever -xkb -bg -rfbport {internal_port}"
+        x11vnc_cmd = f"x11vnc -repeat -quiet -display {display} -nopw -forever -xkb -bg -rfbport {internal_port}"
         x11vnc_thread = DockerThread(x11vnc_cmd)
         x11vnc_thread.start()
         self.threads.append(x11vnc_thread)
@@ -84,9 +84,11 @@ class Vnc_server:
 
     def terminate(self):
         for thread in self.threads:
-            thread.terminate()
-            thread.join()
-            self.running = False
+            if thread.is_alive():
+                thread.terminate()
+                thread.join()
+            self.threads.remove(thread)
+        self.running = False
 
     def get_ros_version(self):
         output = subprocess.check_output(["bash", "-c", "echo $ROS_VERSION"])

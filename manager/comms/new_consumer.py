@@ -2,11 +2,11 @@ import json
 import logging
 from queue import Queue
 from uuid import uuid4
-from websocket_server import WebsocketServer
 from datetime import datetime
 
-from src.manager.comms.consumer_message import ManagerConsumerMessageException, ManagerConsumerMessage
-from src.manager.ram_logging.log_manager import LogManager
+from manager.comms.consumer_message import ManagerConsumerMessageException, ManagerConsumerMessage
+from manager.comms.websocker_server import WebsocketServer
+from manager.ram_logging.log_manager import LogManager
 
 
 class Client:
@@ -65,6 +65,8 @@ class ManagerConsumer:
         self.server.allow_new_connections()
 
     def handle_message_received(self, client, server, websocket_message):
+        LogManager.logger.info(
+            f"message received length: {len(websocket_message)} from client {client}")
         LogManager.logger.info(
             f"message received: {websocket_message} from client {client}")
         message = None

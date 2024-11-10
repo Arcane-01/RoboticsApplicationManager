@@ -1,11 +1,11 @@
-from src.manager.libs.process_utils import get_class, class_from_module
+from manager.libs.process_utils import get_class, class_from_module
 from typing import Optional
 from pydantic import BaseModel
 
 
-from src.manager.libs.process_utils import get_class, class_from_module, get_ros_version
-from src.manager.ram_logging.log_manager import LogManager
-from src.manager.manager.launcher.launcher_interface import ILauncher
+from manager.libs.process_utils import get_class, class_from_module, get_ros_version
+from manager.ram_logging.log_manager import LogManager
+from manager.manager.launcher.launcher_interface import ILauncher
 
 
 visualization = {
@@ -17,6 +17,17 @@ visualization = {
             "external_port": 1108,
             "internal_port": 5901,
         }
+    ],
+    "bt_studio": [
+        {
+            "type": "module",
+            "width": 1024,
+            "height": 768,
+            "module": "gazebo_view",
+            "display": ":2",
+            "external_port": 6080,
+            "internal_port": 5900,
+        },
     ],
     "gazebo_gra": [
         {

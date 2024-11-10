@@ -1,4 +1,7 @@
 from __future__ import annotations
+import sys
+
+sys.path.insert(0, '/RoboticsApplicationManager')
 
 import os
 import signal
@@ -8,6 +11,8 @@ import re
 import psutil
 import shutil
 import time
+import base64
+import zipfile
 
 if "noetic" in str(subprocess.check_output(["bash", "-c", "echo $ROS_DISTRO"])):
     import rosservice
@@ -18,19 +23,20 @@ from uuid import uuid4
 
 from transitions import Machine
 
-from src.manager.comms.consumer_message import ManagerConsumerMessageException
-from src.manager.comms.new_consumer import ManagerConsumer
-from src.manager.libs.process_utils import check_gpu_acceleration, get_class_from_file
-from src.manager.libs.launch_world_model import ConfigurationManager
-from src.manager.manager.launcher.launcher_world import LauncherWorld
-from src.manager.manager.launcher.launcher_visualization import LauncherVisualization
-from src.manager.ram_logging.log_manager import LogManager
-from src.manager.libs.applications.compatibility.server import Server
-from src.manager.manager.application.robotics_python_application_interface import (
+from manager.comms.consumer_message import ManagerConsumerMessageException
+from manager.comms.new_consumer import ManagerConsumer
+from manager.libs.process_utils import check_gpu_acceleration, get_class_from_file
+from manager.libs.launch_world_model import ConfigurationManager
+from manager.manager.launcher.launcher_world import LauncherWorld
+from manager.manager.launcher.launcher_visualization import LauncherVisualization
+from manager.ram_logging.log_manager import LogManager
+from manager.libs.applications.compatibility.server import Server
+from manager.libs.applications.compatibility.file_watchdog import FileWatchdog
+from manager.manager.application.robotics_python_application_interface import (
     IRoboticsPythonApplication,
 )
-from src.manager.libs.process_utils import stop_process_and_children
-from src.manager.manager.lint.linter import Lint
+from manager.libs.process_utils import stop_process_and_children
+from manager.manager.lint.linter import Lint
 
 
 class Manager:
@@ -111,6 +117,13 @@ class Manager:
             "dest": "idle",
             "before": "on_disconnect",
         },
+        # Style check 
+        {
+            "trigger": "style_check",
+            "source": "*",
+            "dest": "*",
+            "before": "on_style_check_application",
+        },
     ]
 
     def __init__(self, host: str, port: int):
@@ -155,6 +168,11 @@ class Manager:
         if self.consumer is not None:
             self.consumer.send_message({"update": data}, command="update")
 
+    def update_bt_studio(self, data):
+        LogManager.logger.debug(f"Sending update to client")
+        if self.consumer is not None:
+            self.consumer.send_message({"update": data}, command="update")
+
     def on_connect(self, event):
         """
         This method is triggered when the application transitions to the 'connected' state.
@@ -164,18 +182,16 @@ class Manager:
             event (Event): The event object containing data related to the 'connect' event.
 
         The message sent to the consumer includes:
-        - `radi_version`: The current RADI (Robotics Application Docker Image) version.
+        - `robotics_backend_version`: The current Robotics Backend version.
         - `ros_version`: The current ROS (Robot Operating System) distribution version.
         - `gpu_avaliable`: Boolean indicating whether GPU acceleration is available.
         """
         self.consumer.send_message(
             {
-                "radi_version": subprocess.check_output(
+                "robotics_backend_version": subprocess.check_output(
                     ["bash", "-c", "echo $IMAGE_TAG"]
                 ),
-                "ros_version": subprocess.check_output(
-                    ["bash", "-c", "echo $ROS_DISTRO"]
-                ),
+                "ros_version": self.ros_version,
                 "gpu_avaliable": check_gpu_acceleration(),
             },
             command="introspection",
@@ -201,18 +217,46 @@ class Manager:
         Note:
             The method logs the start of the launch transition and the configuration details for debugging and traceability.
         """
-
         try:
-            config_dict = event.kwargs.get("data", {})
-            configuration = ConfigurationManager.validate(config_dict)
-        except ValueError as e:
-            LogManager.logger.error(f"Configuration validotion failed: {e}")
+            cfg_dict = event.kwargs.get("data", {})
+            cfg = ConfigurationManager.validate(cfg_dict)
+            if "zip" in cfg_dict:
+                LogManager.logger.info("Launching universe from received zip")
+                self.prepare_custom_universe(cfg_dict)
+            else:
+                LogManager.logger.info("Launching universe from the RB")
 
-        self.world_launcher = LauncherWorld(**configuration.model_dump())
+            LogManager.logger.info(cfg)
+        except ValueError as e:
+            LogManager.logger.error(f"Configuration validation failed: {e}")
+
+        self.world_launcher = LauncherWorld(**cfg.model_dump())
+        LogManager.logger.info(str(self.world_launcher))
         self.world_launcher.run()
         LogManager.logger.info("Launch transition finished")
 
+    def prepare_custom_universe(self, cfg_dict):
+
+        # Unzip the app
+        if cfg_dict["zip"].startswith("data:"):
+            _, _, zip_file = cfg_dict["zip"].partition("base64,")
+
+        universe_ref = "/workspace/worlds/" + cfg_dict["name"]
+        zip_destination = universe_ref + ".zip"
+        with open(zip_destination, "wb") as result:
+            result.write(base64.b64decode(zip_file))
+
+        # Create the folder if it doesn't exist
+        universe_folder = universe_ref + "/"
+        if not os.path.exists(universe_folder):
+            os.makedirs(universe_folder)
+
+        zip_ref = zipfile.ZipFile(zip_destination, "r")
+        zip_ref.extractall(universe_folder + "/")
+        zip_ref.close()
+
     def on_prepare_visualization(self, event):
+
         LogManager.logger.info("Visualization transition started")
 
         self.visualization_type = event.kwargs.get("data", {})
@@ -224,6 +268,10 @@ class Manager:
         if self.visualization_type in ["gazebo_rae", "gzsim_rae"]:
             self.gui_server = Server(2303, self.update)
             self.gui_server.start()
+        elif visualization_type == "bt_studio":
+            self.gui_server = FileWatchdog('/tmp/tree_state', self.update_bt_studio) # TODO: change if type bt
+            self.gui_server.start()
+
         LogManager.logger.info("Visualization transition finished")
 
     def add_frequency_control(self, code):
@@ -238,7 +286,7 @@ ideal_cycle = 20
             code,
         )
         frequency_control_code_pre = """
-    start_time = datetime.now()
+    start_time_internal_freq_control = datetime.now()
             """
         code = (
             code[: infinite_loop.end()]
@@ -246,8 +294,8 @@ ideal_cycle = 20
             + code[infinite_loop.end() :]
         )
         frequency_control_code_post = """
-    finish_time = datetime.now()
-    dt = finish_time - start_time
+    finish_time_internal_freq_control = datetime.now()
+    dt = finish_time_internal_freq_control - start_time_internal_freq_control
     ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
 
     if (ms < ideal_cycle):
@@ -256,58 +304,156 @@ ideal_cycle = 20
         code = code + frequency_control_code_post
         return code
 
-    def on_run_application(self, event):
+    def on_style_check_application(self, event):
+        def find_docker_console():
+            """Search console in docker different of /dev/pts/0"""
+            pts_consoles = [f"/dev/pts/{dev}" for dev in os.listdir('/dev/pts/') if dev.isdigit()]
+            consoles = []
+            for console in pts_consoles:
+                if console != "/dev/pts/0":
+                    try:
+                        # Search if it's a console
+                        with open(console, 'w') as f:
+                            f.write("")
+                        consoles.append(console)
+                    except Exception:
+                        # Continue searching
+                        continue
+            
+            # raise Exception("No active console other than /dev/pts/0")
+            return consoles
 
-        superthin = False
         # Extract app config
-        application_configuration = event.kwargs.get("data", {})
-        application_file_path = application_configuration["template"]
-        exercise_id = application_configuration["exercise_id"]
-        code = application_configuration["code"]
+        app_cfg = event.kwargs.get("data", {})
+        try:
+            if app_cfg["type"] == "bt-studio":
+                return
+        except Exception:
+            pass
 
-        # Template version
-        if "noetic" in str(self.ros_version):
-            application_folder = application_file_path + "/ros1_noetic/"
-        else:
-            application_folder = application_file_path + "/ros2_humble/"
-
-        if not os.path.isfile(application_folder + "exercise.py"):
-            superthin = True
+        exercise_id = app_cfg["exercise_id"]
+        code = app_cfg["code"]
 
         # Make code backwards compatible
-        code = code.replace("from GUI import GUI","import GUI")
-        code = code.replace("from HAL import HAL","import HAL")
+        code = code.replace("from GUI import GUI", "import GUI")
+        code = code.replace("from HAL import HAL", "import HAL")
 
         # Create executable app
-        errors = self.linter.evaluate_code(code, exercise_id)
+        errors = self.linter.evaluate_code(code, exercise_id, self.ros_version, py_lint_source="pylint_checker_style.py")
+
+        if errors == "":
+            errors = "No errors found"
+
+        console_path = find_docker_console()
+        for i in console_path:
+            with open(i, 'w') as console:
+                console.write(errors + "\n\n")
+
+        raise Exception(errors)
+
+    def on_run_application(self, event):
+        def find_docker_console():
+            """Search console in docker different of /dev/pts/0"""
+            pts_consoles = [f"/dev/pts/{dev}" for dev in os.listdir('/dev/pts/') if dev.isdigit()]
+            consoles = []
+            for console in pts_consoles:
+                if console != "/dev/pts/0":
+                    try:
+                        # Search if it's a console
+                        with open(console, 'w') as f:
+                            f.write("")
+                        consoles.append(console)
+                    except Exception:
+                        # Continue searching
+                        continue
+            
+            # raise Exception("No active console other than /dev/pts/0")
+            return consoles
+
+        code_path = "/workspace/code/academy.py"
+        
+        # Delete old files
+        if os.path.exists("/workspace/code"):
+            shutil.rmtree("/workspace/code")
+        os.mkdir("/workspace/code")
+
+        # Extract app config
+        app_cfg = event.kwargs.get("data", {})
+        try:
+            if app_cfg["type"] == "bt-studio":
+                return self.run_bt_studio_application(app_cfg)
+        except Exception:
+            pass
+    
+        # Unzip the app
+        if app_cfg["code"].startswith("data:"):
+            _, _, code = app_cfg["code"].partition("base64,")
+        with open("/workspace/code/app.zip", "wb") as result:
+            result.write(base64.b64decode(code))
+        zip_ref = zipfile.ZipFile("/workspace/code/app.zip", "r")
+        zip_ref.extractall("/workspace/code")
+        zip_ref.close()
+
+        if not os.path.isfile(code_path):
+            LogManager.logger.info("User code not found")
+            raise Exception("User code not found")
+        
+        f = open(code_path, "r")
+        code = f.read()
+        f.close()
+
+        # Make code backwards compatible
+        code = code.replace("from GUI import GUI", "import GUI")
+        code = code.replace("from HAL import HAL", "import HAL")
+
+        # Create executable app
+        errors = self.linter.evaluate_code(code, self.ros_version)
         if errors == "":
 
             code = self.add_frequency_control(code)
-            f = open("/workspace/code/academy.py", "w")
+            f = open(code_path, "w")
             f.write(code)
             f.close()
 
-            shutil.copytree(application_folder, "/workspace/code", dirs_exist_ok=True)
-            if superthin:
-                self.application_process = subprocess.Popen(
-                    ["python3", "/workspace/code/academy.py"],
-                    stdout=sys.stdout,
-                    stderr=subprocess.STDOUT,
-                    bufsize=1024,
-                    universal_newlines=True,
-                )
-            else:
-                self.application_process = subprocess.Popen(
-                    ["python3", "/workspace/code/exercise.py"],
-                    stdout=sys.stdout,
-                    stderr=subprocess.STDOUT,
-                    bufsize=1024,
-                    universal_newlines=True,
-                )
+            self.application_process = subprocess.Popen(
+                ["python3", code_path],
+                stdout=sys.stdout,
+                stderr=subprocess.STDOUT,
+                bufsize=1024,
+                universal_newlines=True,
+            )
             self.unpause_sim()
         else:
-            print("errors")
+            console_path = find_docker_console()
+            for i in console_path:
+                with open(i, 'w') as console:
+                    console.write(errors + "\n\n")
+
             raise Exception(errors)
+
+        LogManager.logger.info("Run application transition finished")
+
+    def run_bt_studio_application(self, data):
+
+        print("BT Studio application")
+
+        # Unzip the app
+        if data["code"].startswith("data:"):
+            _, _, code = data["code"].partition("base64,")
+        with open("/workspace/code/app.zip", "wb") as result:
+            result.write(base64.b64decode(code))
+        zip_ref = zipfile.ZipFile("/workspace/code/app.zip", "r")
+        zip_ref.extractall("/workspace/code")
+        zip_ref.close()
+
+        self.application_process = subprocess.Popen(
+            ["python3", "/workspace/code/execute_docker.py"],
+            stdout=sys.stdout,
+            stderr=subprocess.STDOUT,
+            bufsize=1024,
+            universal_newlines=True,
+        )
+        self.unpause_sim()
 
         LogManager.logger.info("Run application transition finished")
 
@@ -326,8 +472,9 @@ ideal_cycle = 20
     def on_terminate_visualization(self, event):
 
         self.visualization_launcher.terminate()
-        self.gui_server.stop()
-        self.gui_server = None
+        if self.gui_server != None:
+            self.gui_server.stop()
+            self.gui_server = None
 
     def on_terminate_universe(self, event):
 
@@ -364,7 +511,7 @@ ideal_cycle = 20
         python = sys.executable
         os.execl(python, python, *sys.argv)
 
-    def process_messsage(self, message):
+    def process_message(self, message):
         if message.command == "gui":
             self.gui_server.send(message.data)
             return
@@ -486,7 +633,7 @@ ideal_cycle = 20
                     time.sleep(0.1)
                 else:
                     message = self.queue.get()
-                    self.process_messsage(message)
+                    self.process_message(message)
             except Exception as e:
                 if message is not None:
                     ex = ManagerConsumerMessageException(id=message.id, message=str(e))

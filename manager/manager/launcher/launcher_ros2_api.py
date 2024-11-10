@@ -3,8 +3,8 @@ from typing import List, Any
 import time
 import stat
 
-from src.manager.manager.launcher.launcher_interface import ILauncher, LauncherException
-from src.manager.manager.docker_thread.docker_thread import DockerThread
+from manager.manager.launcher.launcher_interface import ILauncher, LauncherException
+from manager.manager.docker_thread.docker_thread import DockerThread
 import subprocess
 
 import logging
@@ -17,7 +17,7 @@ class LauncherRos2Api(ILauncher):
     threads: List[Any] = []
 
     def run(self, callback):
-        DRI_PATH = os.path.join("/dev/dri", os.environ.get("DRI_NAME", "card0"))
+        DRI_PATH = self.get_dri_path()
         ACCELERATION_ENABLED = self.check_device(DRI_PATH)
 
         logging.getLogger("roslaunch").setLevel(logging.CRITICAL)
@@ -37,17 +37,13 @@ class LauncherRos2Api(ILauncher):
         exercise_launch_thread = DockerThread(exercise_launch_cmd)
         exercise_launch_thread.start()
 
-    def check_device(self, device_path):
-        try:
-            return stat.S_ISCHR(os.lstat(device_path)[stat.ST_MODE])
-        except:
-            return False
-
     def terminate(self):
         if self.threads is not None:
             for thread in self.threads:
-                thread.terminate()
-                thread.join()
+                if thread.is_alive():
+                    thread.terminate()
+                    thread.join()
+                self.threads.remove(thread)
 
         kill_cmd = "pkill -9 -f "
         cmd = kill_cmd + "gzserver"

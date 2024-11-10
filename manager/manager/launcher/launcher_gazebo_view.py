@@ -1,7 +1,7 @@
-from src.manager.manager.launcher.launcher_interface import ILauncher
-from src.manager.manager.docker_thread.docker_thread import DockerThread
-from src.manager.manager.vnc.vnc_server import Vnc_server
-from src.manager.libs.process_utils import (
+from manager.manager.launcher.launcher_interface import ILauncher
+from manager.manager.docker_thread.docker_thread import DockerThread
+from manager.manager.vnc.vnc_server import Vnc_server
+from manager.libs.process_utils import (
     wait_for_process_to_start,
     check_gpu_acceleration,
 )
@@ -51,32 +51,17 @@ class LauncherGazeboView(ILauncher):
 
         self.running = True
 
-    def check_device(self, device_path):
-        try:
-            return stat.S_ISCHR(os.lstat(device_path)[stat.ST_MODE])
-        except:
-            return False
-
     def is_running(self):
         return self.running
 
     def terminate(self):
         self.gz_vnc.terminate()
         for thread in self.threads:
-            thread.terminate()
-            thread.join()
+            if thread.is_alive():
+                thread.terminate()
+                thread.join()
+            self.threads.remove(thread)
         self.running = False
 
     def died(self):
         pass
-
-    def get_dri_path(self):
-        directory_path = "/dev/dri"
-        dri_path = ""
-        if os.path.exists(directory_path) and os.path.isdir(directory_path):
-            files = os.listdir(directory_path)
-            if "card1" in files:
-                dri_path = os.path.join("/dev/dri", os.environ.get("DRI_NAME", "card1"))
-            else:
-                dri_path = os.path.join("/dev/dri", os.environ.get("DRI_NAME", "card0"))
-        return dri_path

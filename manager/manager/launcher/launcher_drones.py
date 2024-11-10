@@ -1,8 +1,8 @@
 import os
 import subprocess
-from src.manager.manager.launcher.launcher_interface import ILauncher, LauncherException
-from src.manager.manager.docker_thread.docker_thread import DockerThread
-from src.manager.libs.process_utils import wait_for_xserver
+from manager.manager.launcher.launcher_interface import ILauncher, LauncherException
+from manager.manager.docker_thread.docker_thread import DockerThread
+from manager.libs.process_utils import wait_for_xserver
 from typing import List, Any
 import psutil
 import threading
@@ -39,8 +39,10 @@ class LauncherDrones(ILauncher):
     def terminate(self):
         try:
             for thread in self.threads:
-                thread.terminate()
-                thread.join()
+                if thread.is_alive():
+                    thread.terminate()
+                    thread.join()
+                self.threads.remove(thread)
         except Exception as e:
             print("Exception shutting down ROS")
 

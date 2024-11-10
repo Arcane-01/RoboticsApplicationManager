@@ -1,14 +1,14 @@
 import os
 import time
 from typing import List, Any
-from src.manager.manager.docker_thread.docker_thread import DockerThread
-from src.manager.libs.process_utils import wait_for_xserver
-from src.manager.libs.process_utils import wait_for_process_to_start
+from manager.manager.docker_thread.docker_thread import DockerThread
+from manager.libs.process_utils import wait_for_xserver
+from manager.libs.process_utils import wait_for_process_to_start
 import roslaunch
 import rospy
 
 
-from src.manager.manager.launcher.launcher_interface import ILauncher, LauncherException
+from manager.manager.launcher.launcher_interface import ILauncher, LauncherException
 
 import logging
 
@@ -71,8 +71,10 @@ class LauncherRosApi(ILauncher):
     def terminate(self):
         try:
             for thread in self.threads:
-                thread.terminate()
-                thread.join()
+                if thread.is_alive():
+                    thread.terminate()
+                    thread.join()
+                self.threads.remove(thread)
             self.launch.shutdown()
             self.wait_for_shutdown()
         except Exception as e:

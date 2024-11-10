@@ -1,7 +1,7 @@
 import os
-from src.manager.manager.launcher.launcher_interface import ILauncher
-from src.manager.manager.docker_thread.docker_thread import DockerThread
-from src.manager.libs.process_utils import wait_for_xserver
+from manager.manager.launcher.launcher_interface import ILauncher
+from manager.manager.docker_thread.docker_thread import DockerThread
+from manager.libs.process_utils import wait_for_xserver
 from typing import List, Any
 
 
@@ -44,6 +44,8 @@ class LauncherDronesRos2(ILauncher):
     def terminate(self):
         if self.is_running():
             for thread in self.threads:
-                thread.terminate()
-                thread.join()
+                if thread.is_alive():
+                    thread.terminate()
+                    thread.join()
+                self.threads.remove(thread)
            
